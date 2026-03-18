@@ -2,168 +2,183 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>夜の学校ホラー（移動あり）</title>
+<title>闇の中の声</title>
 <style>
-body {
-  margin: 0;
-  overflow: hidden;
-  background: black;
-  font-family: sans-serif;
-}
+    body {
+        margin: 0;
+        background: black;
+        color: #ddd;
+        font-family: "Courier New", monospace;
+        overflow: hidden;
+    }
 
-#game {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  background: url('https://images.unsplash.com/photo-1581090700227-4c4b6c2e0a2f?auto=format&fit=crop&w=1350&q=80') center/cover no-repeat;
-  filter: brightness(0.25);
-}
+    #game {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 20px;
+        box-sizing: border-box;
+    }
 
-#player {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  background: cyan;
-  border-radius: 50%;
-  left: 50%;
-  top: 50%;
-}
+    #text {
+        font-size: 20px;
+        line-height: 1.5;
+        text-shadow: 0 0 5px red;
+    }
 
-.object {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  background: red;
-}
+    #choices {
+        margin-top: 20px;
+    }
 
-#ui {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  background: rgba(0,0,0,0.8);
-  padding: 15px;
-  color: white;
-}
+    button {
+        background: black;
+        color: white;
+        border: 1px solid red;
+        padding: 10px;
+        margin: 5px;
+        cursor: pointer;
+        width: 100%;
+    }
 
-#ghost {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: url('https://i.imgur.com/8QfQZ6B.png') center/contain no-repeat;
-  background-color: black;
-  display: none;
-  z-index: 999;
-}
+    button:hover {
+        background: red;
+    }
 
+    #jumpscare {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: black;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+    }
+
+    #jumpscare img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    #noise {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        opacity: 0.05;
+        background: url('https://www.transparenttextures.com/patterns/asfalt-light.png');
+    }
 </style>
 </head>
 <body>
 
+<div id="noise"></div>
+
 <div id="game">
-  <div id="player"></div>
-
-  <!-- 調べるポイント -->
-  <div class="object" id="obj0" style="left:20%; top:30%;"></div>
-  <div class="object" id="obj1" style="left:60%; top:50%;"></div>
-  <div class="object" id="obj2" style="left:40%; top:70%;"></div>
-
-  <div id="ghost"></div>
-
-  <div id="ui">
-    <div id="text">WASDで移動 / 赤い場所でEnter</div>
-    <input id="answer" placeholder="答え">
-    <button onclick="submitAnswer()">入力</button>
-  </div>
+    <div id="text"></div>
+    <div id="choices"></div>
 </div>
 
+<div id="jumpscare">
+    <img src="https://i.imgur.com/8Q2QK6F.jpg">
+</div>
+
+<audio id="bgm" loop>
+    <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_6f1c8d9c9d.mp3">
+</audio>
+
+<audio id="scream">
+    <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_9c1d4c8f4f.mp3">
+</audio>
+
 <script>
-let player = { x: window.innerWidth/2, y: window.innerHeight/2 };
-let speed = 4;
+const textEl = document.getElementById("text");
+const choicesEl = document.getElementById("choices");
+const jumpscare = document.getElementById("jumpscare");
+const scream = document.getElementById("scream");
+const bgm = document.getElementById("bgm");
 
-let stage = -1;
-let activeObject = null;
+bgm.volume = 0.3;
 
-const puzzles = [
-  {
-    question: "黒板：1=5、2=25、3=325、4=4325、5=?",
-    answer: "54325"
-  },
-  {
-    question: "ロッカー：2,6,7,5,3 → 逆から読むと？",
-    answer: "36572"
-  },
-  {
-    question: "時計が3時。3時間後は？",
-    answer: "6"
-  }
-];
+let state = "start";
 
-document.addEventListener("keydown", e => {
-  if (stage !== -1) return;
-
-  if (e.key === "w") player.y -= speed;
-  if (e.key === "s") player.y += speed;
-  if (e.key === "a") player.x -= speed;
-  if (e.key === "d") player.x += speed;
-
-  if (e.key === "Enter") checkInteraction();
-
-  updatePlayer();
-});
-
-function updatePlayer() {
-  document.getElementById("player").style.left = player.x + "px";
-  document.getElementById("player").style.top = player.y + "px";
+function setScene(text, choices) {
+    textEl.innerHTML = text;
+    choicesEl.innerHTML = "";
+    choices.forEach(choice => {
+        const btn = document.createElement("button");
+        btn.textContent = choice.text;
+        btn.onclick = choice.action;
+        choicesEl.appendChild(btn);
+    });
 }
 
-function checkInteraction() {
-  for (let i=0;i<3;i++) {
-    let obj = document.getElementById("obj"+i);
-    let rect = obj.getBoundingClientRect();
-
-    if (
-      player.x > rect.left &&
-      player.x < rect.right &&
-      player.y > rect.top &&
-      player.y < rect.bottom
-    ) {
-      startPuzzle(i);
-    }
-  }
+function startGame() {
+    bgm.play();
+    setScene(
+        "あなたは真夜中、知らない部屋で目を覚ました。<br>ドアの向こうから『何か』が這う音がする…",
+        [
+            { text: "ドアを開ける", action: openDoor },
+            { text: "隠れる", action: hide }
+        ]
+    );
 }
 
-function startPuzzle(i) {
-  stage = i;
-  activeObject = i;
-  document.getElementById("text").innerText = puzzles[i].question;
+function openDoor() {
+    setScene(
+        "ドアを開けると、暗い廊下。<br>奥に人影が見える…",
+        [
+            { text: "近づく", action: approach },
+            { text: "戻る", action: back }
+        ]
+    );
 }
 
-function submitAnswer() {
-  if (stage === -1) return;
+function hide() {
+    setScene(
+        "ベッドの下に隠れた。<br>足音が近づいてくる…<br><br>『見つけた』",
+        []
+    );
+    setTimeout(jumpScare, 2000);
+}
 
-  let val = document.getElementById("answer").value;
+function approach() {
+    setScene(
+        "影がこちらを向いた。顔がない。<br><br>急に走ってきた！！",
+        []
+    );
+    setTimeout(jumpScare, 1500);
+}
 
-  if (val === puzzles[stage].answer) {
-    document.getElementById("text").innerText = "正解…何かが開いた気がする";
-    document.getElementById("obj"+stage).style.display = "none";
-    stage = -1;
-    document.getElementById("answer").value = "";
-  } else {
-    jumpScare();
-  }
+function back() {
+    setScene(
+        "部屋に戻ったが、ドアが消えている。<br>後ろに気配を感じる…",
+        []
+    );
+    setTimeout(jumpScare, 2000);
 }
 
 function jumpScare() {
-  let ghost = document.getElementById("ghost");
-  ghost.style.display = "block";
+    jumpscare.style.display = "flex";
+    scream.play();
 
-  let audio = new Audio("https://www.soundjay.com/human/sounds/scream-01.mp3");
-  audio.play();
-
-  setTimeout(()=>{
-    ghost.style.display = "none";
-  },1000);
+    setTimeout(() => {
+        jumpscare.style.display = "none";
+        setScene(
+            "……目を覚ました。<br>でも本当に夢だったのか？",
+            [
+                { text: "もう一度", action: startGame }
+            ]
+        );
+    }, 2000);
 }
+
+startGame();
 </script>
 
 </body>
