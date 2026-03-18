@@ -2,77 +2,60 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>闇の中の声</title>
+<title>闇の中の声 - 拡張版</title>
 <style>
-    body {
-        margin: 0;
-        background: black;
-        color: #ddd;
-        font-family: "Courier New", monospace;
-        overflow: hidden;
-    }
-
-    #game {
-        width: 100vw;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        padding: 20px;
-        box-sizing: border-box;
-    }
-
-    #text {
-        font-size: 20px;
-        line-height: 1.5;
-        text-shadow: 0 0 5px red;
-    }
-
-    #choices {
-        margin-top: 20px;
-    }
-
-    button {
-        background: black;
-        color: white;
-        border: 1px solid red;
-        padding: 10px;
-        margin: 5px;
-        cursor: pointer;
-        width: 100%;
-    }
-
-    button:hover {
-        background: red;
-    }
-
-    #jumpscare {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: black;
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 999;
-    }
-
-    #jumpscare img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    #noise {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        opacity: 0.05;
-        background: url('https://www.transparenttextures.com/patterns/asfalt-light.png');
-    }
+body {
+    margin: 0;
+    background: black;
+    color: #ddd;
+    font-family: "Courier New", monospace;
+    overflow: hidden;
+}
+#game {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px;
+}
+#text {
+    font-size: 20px;
+    text-shadow: 0 0 5px red;
+}
+button {
+    background: black;
+    color: white;
+    border: 1px solid red;
+    padding: 10px;
+    margin: 5px 0;
+    cursor: pointer;
+}
+button:hover {
+    background: red;
+}
+#jumpscare {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+#jumpscare img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+#noise {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    opacity: 0.05;
+    pointer-events: none;
+    background: url('https://www.transparenttextures.com/patterns/asfalt-light.png');
+}
 </style>
 </head>
 <body>
@@ -89,11 +72,11 @@
 </div>
 
 <audio id="bgm" loop>
-    <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_6f1c8d9c9d.mp3">
+<source src="https://cdn.pixabay.com/audio/2022/03/15/audio_6f1c8d9c9d.mp3">
 </audio>
 
 <audio id="scream">
-    <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_9c1d4c8f4f.mp3">
+<source src="https://cdn.pixabay.com/audio/2022/03/15/audio_9c1d4c8f4f.mp3">
 </audio>
 
 <script>
@@ -105,80 +88,140 @@ const bgm = document.getElementById("bgm");
 
 bgm.volume = 0.3;
 
-let state = "start";
-
 function setScene(text, choices) {
     textEl.innerHTML = text;
     choicesEl.innerHTML = "";
-    choices.forEach(choice => {
+    choices.forEach(c => {
         const btn = document.createElement("button");
-        btn.textContent = choice.text;
-        btn.onclick = choice.action;
+        btn.textContent = c.text;
+        btn.onclick = c.action;
         choicesEl.appendChild(btn);
     });
 }
 
-function startGame() {
+function start() {
     bgm.play();
     setScene(
-        "あなたは真夜中、知らない部屋で目を覚ました。<br>ドアの向こうから『何か』が這う音がする…",
+        "目が覚めると、見知らぬ部屋。<br>壁に血のような文字『見てる』<br><br>廊下から音がする…",
         [
-            { text: "ドアを開ける", action: openDoor },
-            { text: "隠れる", action: hide }
+            { text: "ドアを開ける", action: hallway },
+            { text: "クローゼットを開ける", action: closet },
+            { text: "ベッドの下を見る", action: underBed }
         ]
     );
 }
 
-function openDoor() {
+function hallway() {
     setScene(
-        "ドアを開けると、暗い廊下。<br>奥に人影が見える…",
+        "暗い廊下。電気が点滅している。<br>奥に影。右に階段、左にトイレ。",
         [
-            { text: "近づく", action: approach },
-            { text: "戻る", action: back }
+            { text: "影に近づく", action: death },
+            { text: "階段へ行く", action: stairs },
+            { text: "トイレに入る", action: toilet }
         ]
     );
 }
 
-function hide() {
+function closet() {
     setScene(
-        "ベッドの下に隠れた。<br>足音が近づいてくる…<br><br>『見つけた』",
-        []
+        "中に日記がある。<br>『あれは音に反応する』",
+        [
+            { text: "大声を出す", action: death },
+            { text: "静かに外へ", action: hallway },
+            { text: "日記を持つ", action: diary }
+        ]
     );
-    setTimeout(jumpScare, 2000);
 }
 
-function approach() {
+function underBed() {
     setScene(
-        "影がこちらを向いた。顔がない。<br><br>急に走ってきた！！",
+        "ベッドの下に『顔』がある。<br>目が合った。",
         []
     );
     setTimeout(jumpScare, 1500);
 }
 
-function back() {
+function stairs() {
     setScene(
-        "部屋に戻ったが、ドアが消えている。<br>後ろに気配を感じる…",
+        "2階はさらに暗い。<br>窓と扉がある。",
+        [
+            { text: "窓から逃げる", action: escapeBad },
+            { text: "扉を開ける", action: safeRoom }
+        ]
+    );
+}
+
+function toilet() {
+    setScene(
+        "鏡に自分が映らない。<br>後ろに誰かいる。",
         []
     );
     setTimeout(jumpScare, 2000);
 }
 
+function diary() {
+    setScene(
+        "日記『静かにすれば助かる』<br>足音が近い…",
+        [
+            { text: "動かない", action: trueEnd },
+            { text: "逃げる", action: death }
+        ]
+    );
+}
+
+function safeRoom() {
+    setScene(
+        "安全そうな部屋。<br>しかしドアが閉まった。",
+        [
+            { text: "待つ", action: madnessEnd },
+            { text: "ドアを叩く", action: death }
+        ]
+    );
+}
+
+function escapeBad() {
+    setScene(
+        "飛び降りた。<br>助かった…？<br><br>後ろに立っている。",
+        []
+    );
+    setTimeout(jumpScare, 1500);
+}
+
+function trueEnd() {
+    setScene(
+        "音を立てずにいると、気配が消えた。<br><br>外に出られた。<br><br>【生存エンド】",
+        [
+            { text: "もう一度", action: start }
+        ]
+    );
+}
+
+function madnessEnd() {
+    setScene(
+        "誰も来ない。<br>ずっとここにいる。<br><br>あなたは笑い始めた。<br><br>【狂気エンド】",
+        [
+            { text: "もう一度", action: start }
+        ]
+    );
+}
+
+function death() {
+    setScene("……後ろにいる。", []);
+    setTimeout(jumpScare, 1200);
+}
+
 function jumpScare() {
     jumpscare.style.display = "flex";
     scream.play();
-
     setTimeout(() => {
         jumpscare.style.display = "none";
-        setScene(
-            "……目を覚ました。<br>でも本当に夢だったのか？",
-            [
-                { text: "もう一度", action: startGame }
-            ]
-        );
+        setScene("ゲームオーバー", [
+            { text: "最初から", action: start }
+        ]);
     }, 2000);
 }
 
-startGame();
+start();
 </script>
 
 </body>
